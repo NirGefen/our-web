@@ -19,6 +19,15 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    db.Database.ExecuteSqlRaw(@"
+        CREATE TABLE IF NOT EXISTS BucketItems (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Title TEXT NOT NULL,
+            Category TEXT NOT NULL,
+            AddedBy TEXT NOT NULL,
+            IsDone INTEGER NOT NULL DEFAULT 0,
+            CreatedAt TEXT NOT NULL
+        );");
 }
 
 app.UseCors();
@@ -150,6 +159,43 @@ app.MapDelete("/api/pins/{id:int}", async (int id, HttpContext ctx, AppDbContext
     return Results.Ok();
 });
 
+// --- BUCKET LIST ENDPOINTS ---
+
+app.MapGet("/api/bucket", async (AppDbContext db) =>
+    await db.BucketItems
+        .OrderBy(b => b.IsDone)
+        .ThenByDescending(b => b.CreatedAt)
+        .ToListAsync());
+
+app.MapPost("/api/bucket", async (HttpContext ctx, AppDbContext db, BucketItem item) =>
+{
+    if (string.IsNullOrWhiteSpace(item.Title)) return Results.BadRequest();
+    item.AddedBy = ctx.Items["User"]!.ToString()!;
+    item.IsDone = false;
+    item.CreatedAt = DateTime.UtcNow;
+    db.BucketItems.Add(item);
+    await db.SaveChangesAsync();
+    return Results.Ok(item);
+});
+
+app.MapPut("/api/bucket/{id:int}/toggle", async (int id, AppDbContext db) =>
+{
+    var item = await db.BucketItems.FindAsync(id);
+    if (item is null) return Results.NotFound();
+    item.IsDone = !item.IsDone;
+    await db.SaveChangesAsync();
+    return Results.Ok(item);
+});
+
+app.MapDelete("/api/bucket/{id:int}", async (int id, AppDbContext db) =>
+{
+    var item = await db.BucketItems.FindAsync(id);
+    if (item is null) return Results.NotFound();
+    db.BucketItems.Remove(item);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
 app.Run();
 
 // --- MODELS & DB CONTEXT ---
@@ -170,9 +216,20 @@ public class Pin
     public DateTime CreatedAt { get; set; }
 }
 
+public class BucketItem
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public string Category { get; set; } = "🍔 אוכל";
+    public string AddedBy { get; set; } = "";
+    public bool IsDone { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Pin> Pins => Set<Pin>();
+    public DbSet<BucketItem> BucketItems => Set<BucketItem>();
 }
