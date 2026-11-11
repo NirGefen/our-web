@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -199,6 +202,18 @@ app.MapDelete("/api/bucket/{id:int}", async (int id, AppDbContext db) =>
     await db.SaveChangesAsync();
     return Results.Ok();
 });
+
+foreach (var file in Directory.GetFiles(uploadsDir))
+{
+    if (new FileInfo(file).Length < 300 * 1024) continue; // דלג על תמונות שכבר מכווצות
+    try
+    {
+        using var img = Image.Load(file);
+        img.Mutate(x => x.AutoOrient().Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(1200, 1200) }));
+        img.SaveAsJpeg(file, new JpegEncoder { Quality = 80 });
+    }
+    catch { }
+}
 
 app.Run();
 
