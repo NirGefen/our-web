@@ -257,15 +257,24 @@ async Task SendPushToPartner(AppDbContext db, string sender, string title, strin
     {
         try
         {
+            Console.WriteLine($"[Push] Trying to send notification to {s.User}...");
             var pushSub = new PushSubscription(s.Endpoint, s.P256dh, s.Auth);
             await client.SendNotificationAsync(pushSub, payload, vapidDetails);
+            Console.WriteLine($"[Push] Successfully sent to {s.User}!");
         }
-        catch (WebPushException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Gone || ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (WebPushException ex)
         {
-            db.PushSubs.Remove(s); // delete expired sub
-            await db.SaveChangesAsync();
+            Console.WriteLine($"[Push Error] Failed for {s.User}. Status: {ex.StatusCode}. Message: {ex.Message}");
+            if (ex.StatusCode == System.Net.HttpStatusCode.Gone || ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                db.PushSubs.Remove(s);
+                await db.SaveChangesAsync();
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Push Error] General error for {s.User}: {ex.Message}");
+        }
     }
 }
 
