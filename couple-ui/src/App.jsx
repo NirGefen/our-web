@@ -64,6 +64,7 @@ export default function App() {
     const [loginError, setLoginError] = useState(false);
     const [user, setUser] = useState(null); // Automatically set to 'Nir' or 'Nona' by the backend
     const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'pins' | 'sounds'
+    const [isUploading, setIsUploading] = useState(false);
 
     // Chat state
     const [messages, setMessages] = useState([]);
@@ -185,20 +186,30 @@ export default function App() {
 
     const uploadPin = async (e) => {
         e.preventDefault();
-        if (!file) return;
-        const compressed = await compressImage(file);
-        const formData = new FormData();
-        formData.append('image', compressed);
-        formData.append('caption', caption);
+        if (!file || isUploading) return;
 
-        const res = await apiFetch('/api/pins', { method: 'POST', body: formData });
-        if (res.ok) {
-            setCaption('');
-            setFile(null);
-            setPreviewUrl(null);
-            const updated = await apiFetch('/api/pins');
-            if (updated.ok) setPins(await updated.json());
+        setIsUploading(true);
+        try {
+            const compressed = await compressImage(file);
+            const formData = new FormData();
+            formData.append('image', compressed);
+            formData.append('caption', caption);
+
+            const res = await apiFetch('/api/pins', { method: 'POST', body: formData });
+            if (res.ok) {
+                setCaption('');
+                setFile(null);
+                setPreviewUrl(null);
+                const updated = await apiFetch('/api/pins');
+                if (updated.ok) setPins(await updated.json());
+            }
         }
+        finally {
+            setIsUploading(false); // only allow uploading again once previous is done
+        }
+
+        
+        
     };
 
     // 3. Confirm and delete pin
@@ -388,8 +399,11 @@ export default function App() {
                                     value={caption}
                                     onChange={e => setCaption(e.target.value)}
                                 />
-                                <button type="submit" disabled={!file} className="pin-submit-btn">
-                                    📌 הצמד!
+                                <button type="submit" disabled={isUploading || !file} style={{
+                                    opacity: isUploading ? 0.6 : 1,
+                                    cursor: isUploading ? 'not-allowed' : 'pointer'
+                                }} className="pin-submit-btn">
+                                    {isUploading ? 'מעלה תמונה...' : '📌 הצמד!'}
                                 </button>
                             </form>
 
