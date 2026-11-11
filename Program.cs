@@ -166,7 +166,7 @@ app.MapPost("/api/pins", async (HttpContext ctx, HttpRequest req, AppDbContext d
     db.Pins.Add(pin);
     await db.SaveChangesAsync();
     var user = ctx.Items["User"]!.ToString()!;
-    _ = SendPushToPartner(db, user, "תמונה חדשה בלוח!", $"{user} העלה/תה תמונה חדשה: {caption}");
+    await SendPushToPartner(db, user, "תמונה חדשה בלוח!", $"{user} העלה/תה תמונה חדשה: {caption}");
     return Results.Ok(pin);
 });
 
@@ -243,14 +243,23 @@ foreach (var file in Directory.GetFiles(uploadsDir))
 
 async Task SendPushToPartner(AppDbContext db, string sender, string title, string message)
 {
+    Console.WriteLine($"[Push] Started push process by {sender}");
+
     var pub = await db.AppConfigs.FindAsync("VapidPublic");
     var priv = await db.AppConfigs.FindAsync("VapidPrivate");
-    if (pub is null || priv is null) return;
+    if (pub is null || priv is null)
+    {
+        Console.WriteLine("[Push Error] VAPID keys not found in DB!");
+        return;
+    }
 
     var vapidDetails = new VapidDetails("mailto:admin@example.com", pub.Value, priv.Value);
     var client = new WebPushClient();
 
     var subs = await db.PushSubs.Where(s => s.User != sender).ToListAsync();
+    Console.WriteLine($"[Push] Found {subs.Count} subscriptions for partner.");
+
+    // הנה השורה שהייתה חסרה:
     var payload = JsonSerializer.Serialize(new { title, body = message });
 
     foreach (var s in subs)
@@ -262,18 +271,9 @@ async Task SendPushToPartner(AppDbContext db, string sender, string title, strin
             await client.SendNotificationAsync(pushSub, payload, vapidDetails);
             Console.WriteLine($"[Push] Successfully sent to {s.User}!");
         }
-        catch (WebPushException ex)
-        {
-            Console.WriteLine($"[Push Error] Failed for {s.User}. Status: {ex.StatusCode}. Message: {ex.Message}");
-            if (ex.StatusCode == System.Net.HttpStatusCode.Gone || ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                db.PushSubs.Remove(s);
-                await db.SaveChangesAsync();
-            }
-        }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Push Error] General error for {s.User}: {ex.Message}");
+            Console.WriteLine($"[Push Error] for {s.User}: {ex.Message}");
         }
     }
 }
