@@ -151,6 +151,7 @@ export default function App() {
                 const data = await res.json();
                 setUser(data.user);
                 setLoginError(false);
+                localStorage.setItem('secret_pin', pin);
             } else {
                 setLoginError(true);
             }
