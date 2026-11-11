@@ -8,43 +8,6 @@ const urlBase64ToUint8Array = (base64String) => {
     return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 };
 
-const enableNotifications = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        alert('כדי להפעיל התראות באייפון, הוסיפו קודם את האתר למסך הבית ופתחו אותו משם ❤️');
-        return;
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-
-    const reg = await navigator.serviceWorker.ready;
-    const res = await fetch('/api/push/vapid-public-key', {
-        headers: { 'X-Secret-Pin': pin }
-    });
-    const { publicKey } = await res.json();
-
-    const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-    });
-
-    const subJson = sub.toJSON();
-    await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Secret-Pin': pin
-        },
-        body: JSON.stringify({
-            endpoint: subJson.endpoint,
-            p256dh: subJson.keys.p256dh,
-            auth: subJson.keys.auth
-        })
-    });
-
-    alert('התראות הופעלו בהצלחה! 🔔❤️');
-};
-
 // דחיסת תמונה בצד לקוח לפני העלאה לשרת
 const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
     return new Promise((resolve) => {
@@ -130,6 +93,43 @@ export default function App() {
     const [bucketFilter, setBucketFilter] = useState('הכל');
     const [spinning, setSpinning] = useState(false);
     const [pickedItem, setPickedItem] = useState(null);
+
+    const enableNotifications = async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            alert('כדי להפעיל התראות באייפון, הוסיפו קודם את האתר למסך הבית ופתחו אותו משם ❤️');
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const reg = await navigator.serviceWorker.ready;
+        const res = await fetch('/api/push/vapid-public-key', {
+            headers: { 'X-Secret-Pin': pin }
+        });
+        const { publicKey } = await res.json();
+
+        const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+
+        const subJson = sub.toJSON();
+        await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Secret-Pin': pin
+            },
+            body: JSON.stringify({
+                endpoint: subJson.endpoint,
+                p256dh: subJson.keys.p256dh,
+                auth: subJson.keys.auth
+            })
+        });
+
+        alert('התראות הופעלו בהצלחה! 🔔❤️');
+    };
 
     const apiFetch = async (url, options = {}) => {
         const res = await fetch(url, {
