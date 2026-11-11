@@ -3,6 +3,9 @@ using Microsoft.Extensions.FileProviders;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using WebPush;
+using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +34,27 @@ using (var scope = app.Services.CreateScope())
             IsDone INTEGER NOT NULL DEFAULT 0,
             CreatedAt TEXT NOT NULL
         );");
+
+    db.Database.ExecuteSqlRaw(@"
+    CREATE TABLE IF NOT EXISTS PushSubs (
+        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+        User TEXT NOT NULL,
+        Endpoint TEXT NOT NULL,
+        P256dh TEXT NOT NULL,
+        Auth TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS AppConfigs (
+        Key TEXT PRIMARY KEY,
+        Value TEXT NOT NULL
+    );");
+
+    if (!db.AppConfigs.Any(c => c.Key == "VapidPublic"))
+    {
+        var keys = VapidHelper.GenerateVapidKeys();
+        db.AppConfigs.Add(new AppConfig { Key = "VapidPublic", Value = keys.PublicKey });
+        db.AppConfigs.Add(new AppConfig { Key = "VapidPrivate", Value = keys.PrivateKey });
+        db.SaveChanges();
+    }
 }
 
 app.UseCors();
@@ -141,6 +165,8 @@ app.MapPost("/api/pins", async (HttpContext ctx, HttpRequest req, AppDbContext d
 
     db.Pins.Add(pin);
     await db.SaveChangesAsync();
+    var user = ctx.Items["User"]!.ToString()!;
+    _ = SendPushToPartner(db, user, "תמונה חדשה בלוח!", $"{user} העלה/תה תמונה חדשה: {caption}");
     return Results.Ok(pin);
 });
 
@@ -215,6 +241,58 @@ foreach (var file in Directory.GetFiles(uploadsDir))
     catch { }
 }
 
+async Task SendPushToPartner(AppDbContext db, string sender, string title, string message)
+{
+    var pub = await db.AppConfigs.FindAsync("VapidPublic");
+    var priv = await db.AppConfigs.FindAsync("VapidPrivate");
+    if (pub is null || priv is null) return;
+
+    var vapidDetails = new VapidDetails("mailto:admin@example.com", pub.Value, priv.Value);
+    var client = new WebPushClient();
+
+    var subs = await db.PushSubs.Where(s => s.User != sender).ToListAsync();
+    var payload = JsonSerializer.Serialize(new { title, body = message });
+
+    foreach (var s in subs)
+    {
+        try
+        {
+            var pushSub = new PushSubscription(s.Endpoint, s.P256dh, s.Auth);
+            await client.SendNotificationAsync(pushSub, payload, vapidDetails);
+        }
+        catch (WebPushException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Gone || ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            db.PushSubs.Remove(s); // delete expired sub
+            await db.SaveChangesAsync();
+        }
+        catch { }
+    }
+}
+
+app.MapGet("/api/push/vapid-public-key", async (AppDbContext db) =>
+{
+    var key = await db.AppConfigs.FindAsync("VapidPublic");
+    return Results.Ok(new { publicKey = key!.Value });
+});
+
+app.MapPost("/api/push/subscribe", async (HttpContext ctx, AppDbContext db, PushSubDto dto) =>
+{
+    var user = ctx.Items["User"]!.ToString()!;
+    var existing = await db.PushSubs.FirstOrDefaultAsync(s => s.Endpoint == dto.Endpoint);
+    if (existing is null)
+    {
+        db.PushSubs.Add(new PushSub
+        {
+            User = user,
+            Endpoint = dto.Endpoint,
+            P256dh = dto.P256dh,
+            Auth = dto.Auth
+        });
+        await db.SaveChangesAsync();
+    }
+    return Results.Ok();
+});
+
 app.Run();
 
 // --- MODELS & DB CONTEXT ---
@@ -245,10 +323,29 @@ public class BucketItem
     public DateTime CreatedAt { get; set; }
 }
 
+public class PushSub
+{
+    public int Id { get; set; }
+    public string User { get; set; } = "";
+    public string Endpoint { get; set; } = "";
+    public string P256dh { get; set; } = "";
+    public string Auth { get; set; } = "";
+}
+public record PushSubDto(string Endpoint, string P256dh, string Auth);
+
+public class AppConfig
+{
+    [Key]
+    public string Key { get; set; } = "";
+    public string Value { get; set; } = "";
+}
+
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Pin> Pins => Set<Pin>();
     public DbSet<BucketItem> BucketItems => Set<BucketItem>();
+    public DbSet<PushSub> PushSubs => Set<PushSub>();
+    public DbSet<AppConfig> AppConfigs => Set<AppConfig>();
 }

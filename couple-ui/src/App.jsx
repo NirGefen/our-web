@@ -1,6 +1,50 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
+const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+};
+
+const enableNotifications = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        alert('כדי להפעיל התראות באייפון, הוסיפו קודם את האתר למסך הבית ופתחו אותו משם ❤️');
+        return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+
+    const reg = await navigator.serviceWorker.ready;
+    const res = await fetch('/api/push/vapid-public-key', {
+        headers: { 'X-Secret-Pin': pin }
+    });
+    const { publicKey } = await res.json();
+
+    const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+
+    const subJson = sub.toJSON();
+    await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Secret-Pin': pin
+        },
+        body: JSON.stringify({
+            endpoint: subJson.endpoint,
+            p256dh: subJson.keys.p256dh,
+            auth: subJson.keys.auth
+        })
+    });
+
+    alert('התראות הופעלו בהצלחה! 🔔❤️');
+};
+
 // דחיסת תמונה בצד לקוח לפני העלאה לשרת
 const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
     return new Promise((resolve) => {
@@ -329,6 +373,12 @@ export default function App() {
                     <div className="user-info">
                         <span className="user-tag">היי, <strong>{user}</strong></span>
                         <button className="logout-btn" onClick={handleLogout} title="יציאה">🚪</button>
+                        <button
+                            onClick={enableNotifications}
+                            style={{ background: '#ffe4ec', color: '#ff4d79', border: 'none', borderRadius: '16px', padding: '6px 12px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                            🔔
+                        </button>
                     </div>
                 </header>
 
