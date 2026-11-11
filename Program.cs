@@ -130,6 +130,7 @@ app.MapPost("/api/messages", async (HttpContext ctx, AppDbContext db, Message ms
     msg.CreatedAt = DateTime.UtcNow;
     db.Messages.Add(msg);
     await db.SaveChangesAsync();
+    await SendPushToPartner(db, msg.Sender, $"💬 הודעה חדשה מ{msg.Sender}", msg.Text);
     return Results.Ok(msg);
 });
 

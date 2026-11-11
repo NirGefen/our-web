@@ -95,40 +95,54 @@ export default function App() {
     const [pickedItem, setPickedItem] = useState(null);
 
     const enableNotifications = async () => {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            alert('כדי להפעיל התראות באייפון, הוסיפו קודם את האתר למסך הבית ופתחו אותו משם ❤️');
-            return;
+        try {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                alert('כדי להפעיל התראות באייפון, הוסיפו קודם את האתר למסך הבית ופתחו אותו משם ❤️');
+                return;
+            }
+
+            // חובה! רושמים את ה-Service Worker מול הדפדפן לפני שמחכים לו
+            await navigator.serviceWorker.register('/sw.js');
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                alert('לא אושרה הרשאת התראות בדפדפן.');
+                return;
+            }
+
+            const reg = await navigator.serviceWorker.ready;
+            const res = await fetch('/api/push/vapid-public-key', {
+                headers: { 'X-Secret-Pin': pin }
+            });
+
+            if (!res.ok) throw new Error('שגיאה בשליפת המפתח הציבורי מהשרת');
+            const { publicKey } = await res.json();
+
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey)
+            });
+
+            const subJson = sub.toJSON();
+            const saveRes = await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Secret-Pin': pin
+                },
+                body: JSON.stringify({
+                    endpoint: subJson.endpoint,
+                    p256dh: subJson.keys.p256dh,
+                    auth: subJson.keys.auth
+                })
+            });
+
+            if (!saveRes.ok) throw new Error('השרת סירב לשמור את המנוי במסד הנתונים');
+
+            alert('התראות הופעלו בהצלחה! 🔔❤️');
+        } catch (err) {
+            alert('בעיה בהפעלת התראות:\n' + err.message);
         }
-
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
-
-        const reg = await navigator.serviceWorker.ready;
-        const res = await fetch('/api/push/vapid-public-key', {
-            headers: { 'X-Secret-Pin': pin }
-        });
-        const { publicKey } = await res.json();
-
-        const sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-        });
-
-        const subJson = sub.toJSON();
-        await fetch('/api/push/subscribe', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Secret-Pin': pin
-            },
-            body: JSON.stringify({
-                endpoint: subJson.endpoint,
-                p256dh: subJson.keys.p256dh,
-                auth: subJson.keys.auth
-            })
-        });
-
-        alert('התראות הופעלו בהצלחה! 🔔❤️');
     };
 
     const apiFetch = async (url, options = {}) => {
