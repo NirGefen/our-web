@@ -1,0 +1,544 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root {
+    width: 100%;
+    height: 100%;
+    background: #0f0f14;
+}
+
+.app-wrapper {
+    width: 100%;
+    height: 100dvh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Fullscreen on mobile */
+.mobile-shell {
+    width: 100%;
+    height: 100dvh;
+    background: #1e1e24;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Clean floating card on desktop browsers */
+@media (min-width: 500px) {
+    .mobile-shell {
+        width: 440px;
+        height: 88vh;
+        max-height: 860px;
+        border-radius: 28px;
+        border: 1px solid #323240;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+    }
+}
+
+/* Lock Screen */
+.lock-screen {
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+}
+
+    .lock-screen form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .lock-screen input,
+    .lock-screen button {
+        padding: 14px;
+        border-radius: 12px;
+        border: none;
+        font-size: 1.1rem;
+        text-align: center;
+    }
+
+    .lock-screen input {
+        background: #2b2b36;
+        color: #fff;
+        outline: none;
+    }
+
+    .lock-screen button {
+        background: #ff4d6d;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+.error-text {
+    color: #ff4d6d;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+/* Top Bar */
+.top-bar {
+    padding: 14px 16px;
+    background: #2b2b36;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #3a3a48;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-tag {
+    font-size: 0.9rem;
+    color: #ddd;
+}
+
+.logout-btn {
+    background: #3a3a48;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+/* Main Content Area */
+.content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chat Tab */
+.chat-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.messages-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+    .bubble small {
+        font-size: 0.7rem;
+        opacity: 0.75;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .bubble.mine {
+        align-self: flex-end;
+        background: #ff4d6d;
+        border-bottom-right-radius: 4px;
+    }
+
+    .bubble.theirs {
+        align-self: flex-start;
+        background: #2f2f3d;
+        border-bottom-left-radius: 4px;
+    }
+
+.chat-input {
+    display: flex;
+    padding: 10px;
+    gap: 8px;
+    background: #2b2b36;
+}
+
+    .chat-input input {
+        flex: 1;
+        padding: 12px 14px;
+        border-radius: 20px;
+        border: none;
+        background: #1e1e24;
+        color: #fff;
+        outline: none;
+    }
+
+    .chat-input button {
+        padding: 0 18px;
+        border-radius: 20px;
+        border: none;
+        background: #ff4d6d;
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+/* Pins Tab & Camera Buttons */
+.pins-view {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pin-uploader {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #2b2b36;
+    padding: 14px;
+    border-radius: 14px;
+}
+
+.photo-picker-row {
+    display: flex;
+    gap: 10px;
+}
+
+.picker-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s;
+}
+
+    .picker-btn:active {
+        opacity: 0.8;
+    }
+
+.camera-btn {
+    background: #3a86ff;
+    color: #fff;
+}
+
+.gallery-btn {
+    background: #3a3a48;
+    color: #fff;
+}
+
+.image-preview {
+    position: relative;
+    width: 100%;
+    max-height: 220px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+    .image-preview img {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        display: block;
+    }
+
+.clear-preview {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    cursor: pointer;
+}
+
+.pin-uploader input[type="text"] {
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #1e1e24;
+    color: #fff;
+    outline: none;
+}
+
+.pin-submit-btn {
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #ff4d6d;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+    .pin-submit-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+/* Polaroids Grid & Delete Button */
+.pins-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.polaroid {
+    background: #fff;
+    color: #222;
+    padding: 8px 8px 14px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.polaroid-img-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.polaroid img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.polaroid p {
+    font-weight: 600;
+    font-size: 0.9rem;
+    word-wrap: break-word;
+}
+
+.polaroid small {
+    color: #666;
+    font-size: 0.75rem;
+}
+
+.delete-pin-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(0, 0, 0, 0.65);
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    backdrop-filter: blur(2px);
+}
+
+    .delete-pin-btn:active {
+        transform: scale(0.92);
+    }
+
+/* Sounds Tab */
+.sounds-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 20px;
+}
+
+.sound-btn {
+    aspect-ratio: 1;
+    border-radius: 24px;
+    border: none;
+    background: linear-gradient(145deg, #ff4d6d, #c9184a);
+    color: white;
+    font-size: 1.3rem;
+    font-weight: bold;
+    box-shadow: 0 6px 0 #800f2f;
+    cursor: pointer;
+}
+
+    .sound-btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 2px 0 #800f2f;
+    }
+
+/* Confirmation Popup Modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 100;
+}
+
+.confirm-modal {
+    background: #2b2b36;
+    color: #fff;
+    padding: 20px;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+    .confirm-modal h3 {
+        margin-bottom: 8px;
+        font-size: 1.15rem;
+    }
+
+    .confirm-modal p {
+        font-size: 0.9rem;
+        color: #bbb;
+        margin-bottom: 18px;
+    }
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+}
+
+    .modal-actions button {
+        flex: 1;
+        padding: 10px;
+        border-radius: 10px;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+.cancel-btn {
+    background: #3a3a48;
+    color: #fff;
+}
+
+.confirm-delete-btn {
+    background: #ff4d6d;
+    color: #fff;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+    display: flex;
+    background: #2b2b36;
+    border-top: 1px solid #3a3a48;
+}
+
+    .bottom-nav button {
+        flex: 1;
+        padding: 14px;
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+        .bottom-nav button.active {
+            color: #ff4d6d;
+            border-top: 2px solid #ff4d6d;
+        }
+
+
+/* Lightbox Modal */
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    z-index: 200;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.lightbox-card {
+    position: relative;
+    background: #2b2b36;
+    border-radius: 20px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 450px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+}
+
+    .lightbox-card img {
+        width: 100%;
+        max-height: 65vh;
+        object-fit: contain;
+        background: #000;
+        display: block;
+    }
+
+.lightbox-info {
+    padding: 16px;
+    color: #fff;
+    text-align: center;
+    background: #2b2b36;
+}
+
+    .lightbox-info p {
+        font-size: 1.05rem;
+        margin-bottom: 4px;
+    }
+
+    .lightbox-info small {
+        color: #aaa;
+        font-size: 0.85rem;
+    }
+
+.lightbox-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
